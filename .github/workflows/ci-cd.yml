@@ -1,0 +1,88 @@
+name: "CI/CD — Medical Service"
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+
+  sonarqube:
+    name: "1. SonarQube"
+    uses: meditrack-project/meditrack-templates/.github/workflows/sonarqube.yml@main
+    with:
+      service_name:      meditrack-medical-service
+      service_path:      "."
+      sonar_project_key: meditrack-medical-service
+      language:          python
+      python_version:    "3.12"
+    secrets: inherit
+
+  snyk:
+    name: "2. Snyk SCA"
+    needs: sonarqube
+    uses: meditrack-project/meditrack-templates/.github/workflows/snyk.yml@main
+    with:
+      service_name:   meditrack-medical-service
+      service_path:   "."
+      language:       python
+      python_version: "3.12"
+    secrets: inherit
+
+  docker:
+    name: "3-5. Docker Build → Trivy → Push"
+    needs: snyk
+    if: github.event_name == 'push'
+    uses: meditrack-project/meditrack-templates/.github/workflows/docker-build.yml@main
+    with:
+      service_name:      meditrack-medical-service
+      service_path:      "."
+      docker_image_name: meditrack-medical-service
+      language:          python
+      branch:            ${{ github.ref_name }}
+    secrets: inherit
+
+  deploy-dev:
+    name: "6. Deploy → Dev"
+    needs: docker
+    if: github.ref == 'refs/heads/dev'
+    uses: meditrack-project/meditrack-templates/.github/workflows/cd-update.yml@main
+    with:
+      service_name:     meditrack-medical-service
+      helm_service_key: medicalService
+      image_tag:        ${{ needs.docker.outputs.image_tag }}
+      environment:      dev
+      version:          ${{ needs.docker.outputs.version }}
+    secrets: inherit
+
+  approval:
+    name: "6. Approval Gate → Prod"
+    needs: docker
+    if: github.ref == 'refs/heads/main'
+    uses: meditrack-project/meditrack-templates/.github/workflows/approval-gate.yml@main
+    with:
+      service_name:     meditrack-medical-service
+      image_tag:        ${{ needs.docker.outputs.image_tag }}
+      helm_service_key: medicalService
+    secrets: inherit
+
+  deploy-prod:
+    name: "7. Deploy → Prod"
+    needs: [docker, approval]
+    if: github.ref == 'refs/heads/main'
+    uses: meditrack-project/meditrack-templates/.github/workflows/cd-update.yml@main
+    with:
+      service_name:     meditrack-medical-service
+      helm_service_key: medicalService
+      image_tag:        ${{ needs.docker.outputs.image_tag }}
+      environment:      prod
+      version:          ${{ needs.docker.outputs.version }}
+    secrets: inherit
