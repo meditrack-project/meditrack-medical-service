@@ -10,23 +10,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
 
   sonarqube:
     name: "1. SonarQube"
     uses: meditrack-project/meditrack-templates/.github/workflows/sonarqube.yml@main
     with:
-      service_name:       meditrack-medical-service
-      service_path:       "."
-      sonar_project_key:  meditrack-medical-service
-      language:           python
-      python_version:     "3.12"
-    secrets:
-      SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
-      SONARQUBE_URL:   ${{ secrets.SONARQUBE_URL }}
-      SMTP_USERNAME:   ${{ secrets.SMTP_USERNAME }}
-      SMTP_PASSWORD:   ${{ secrets.SMTP_PASSWORD }}
-      ALERT_EMAIL:     ${{ secrets.ALERT_EMAIL }}
+      service_name:      meditrack-medical-service
+      service_path:      "."
+      sonar_project_key: meditrack-medical-service
+      language:          python
+      python_version:    "3.12"
+    secrets: inherit
 
   snyk:
     name: "2. Snyk SCA"
@@ -37,11 +35,7 @@ jobs:
       service_path:   "."
       language:       python
       python_version: "3.12"
-    secrets:
-      SNYK_TOKEN:    ${{ secrets.SNYK_TOKEN }}
-      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      ALERT_EMAIL:   ${{ secrets.ALERT_EMAIL }}
+    secrets: inherit
 
   docker:
     name: "3-5. Docker Build → Trivy → Push"
@@ -54,12 +48,7 @@ jobs:
       docker_image_name: meditrack-medical-service
       language:          python
       branch:            ${{ github.ref_name }}
-    secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_TOKEN }}
-      SMTP_USERNAME:      ${{ secrets.SMTP_USERNAME }}
-      SMTP_PASSWORD:      ${{ secrets.SMTP_PASSWORD }}
-      ALERT_EMAIL:        ${{ secrets.ALERT_EMAIL }}
+    secrets: inherit
 
   deploy-dev:
     name: "6. Deploy → Dev"
@@ -72,11 +61,7 @@ jobs:
       image_tag:        ${{ needs.docker.outputs.image_tag }}
       environment:      dev
       version:          ${{ needs.docker.outputs.version }}
-    secrets:
-      GITOPS_TOKEN:  ${{ secrets.GITOPS_TOKEN }}
-      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      ALERT_EMAIL:   ${{ secrets.ALERT_EMAIL }}
+    secrets: inherit
 
   approval:
     name: "6. Approval Gate → Prod"
@@ -87,10 +72,7 @@ jobs:
       service_name:     meditrack-medical-service
       image_tag:        ${{ needs.docker.outputs.image_tag }}
       helm_service_key: medicalService
-    secrets:
-      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      ALERT_EMAIL:   ${{ secrets.ALERT_EMAIL }}
+    secrets: inherit
 
   deploy-prod:
     name: "7. Deploy → Prod"
@@ -103,8 +85,4 @@ jobs:
       image_tag:        ${{ needs.docker.outputs.image_tag }}
       environment:      prod
       version:          ${{ needs.docker.outputs.version }}
-    secrets:
-      GITOPS_TOKEN:  ${{ secrets.GITOPS_TOKEN }}
-      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      ALERT_EMAIL:   ${{ secrets.ALERT_EMAIL }}
+    secrets: inherit
