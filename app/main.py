@@ -71,3 +71,5 @@ async def health_check():
         "service": "medical-service",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+#add1
