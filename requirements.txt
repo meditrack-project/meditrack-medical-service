@@ -7,3 +7,4 @@ bcrypt==3.2.2
 pydantic[email-validator]==2.7.4
 slowapi==0.1.9
 python-multipart==0.0.22
+redis==5.0.4
